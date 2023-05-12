@@ -9,6 +9,10 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { env } from "~/env.mjs";
 import { prisma } from "~/server/db";
 
+// interface SessionWithUser extends Session {
+//   user: User;
+// }
+
 /**
  * Module augmentation for `next-auth` types. Allows us to add custom properties to the `session`
  * object and keep type safety.
@@ -17,17 +21,15 @@ import { prisma } from "~/server/db";
  */
 declare module "next-auth" {
   interface Session extends DefaultSession {
-    user: {
-      id: string;
-      // ...other properties
-      // role: UserRole;
-    } & DefaultSession["user"];
+    user: User & DefaultSession["user"];
   }
 
-  // interface User {
-  //   // ...other properties
-  //   // role: UserRole;
-  // }
+  interface User {
+    id: number;
+    email: string;
+    roleId: number;
+    role: { title: string };
+  }
 }
 
 /**
@@ -37,13 +39,20 @@ declare module "next-auth" {
  */
 export const authOptions: NextAuthOptions = {
   callbacks: {
-    session: ({ session, user }) => ({
-      ...session,
-      user: {
-        ...session.user,
-        id: user.id,
-      },
-    }),
+    session: async ({ session, user }) => {
+      const userRole = await prisma.user.findUnique({
+        where: { email: user.email },
+        select: { roleId: true, role: { select: { title: true } } },
+      });
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: user.id,
+          ...userRole,
+        },
+      };
+    },
   },
   adapter: PrismaAdapter(prisma),
   providers: [
