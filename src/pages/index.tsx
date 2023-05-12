@@ -2,10 +2,16 @@ import { type NextPage } from "next";
 import { useSession } from "next-auth/react";
 import Head from "next/head";
 import Login from "./login";
+import Admin from "./admin/admin";
 import Homepage from "./homepage";
+import Loading from "~/components/loading";
 
-const Home: NextPage = (props) => {
-  const { status } = useSession();
+const Home: NextPage = () => {
+  const { status, data } = useSession();
+
+  if (status === "loading") {
+    return <Loading />;
+  }
 
   return (
     <>
@@ -15,7 +21,15 @@ const Home: NextPage = (props) => {
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      {status === "authenticated" ? <Homepage /> : <Login />}
+      {status === "authenticated" ? (
+        data.user.role.title === "Admin" ? (
+          <Admin />
+        ) : (
+          <Homepage />
+        )
+      ) : (
+        <Login />
+      )}
     </>
   );
 };
